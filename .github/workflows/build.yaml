@@ -24,7 +24,7 @@ on:
         required: true
         type: string
       build_type:
-        description: "build_type: one of [branch, nightly, pull-request]"
+        description: "build_type: one of [branch, nightly, pull-request, release-candidate]"
         type: string
         default: nightly
 
@@ -59,8 +59,7 @@ jobs:
       id-token: write
       packages: read
       pull-requests: read
-    secrets: inherit # zizmor: ignore[secrets-inherit]
-    uses: rapidsai/shared-workflows/.github/workflows/conda-cpp-build.yaml@main
+    uses: rapidsai/shared-workflows/.github/workflows/conda-cpp-build.yaml@10c48afab35c7a70c3c4b1fcccaab11356b7720f
     with:
       build_type: ${{ inputs.build_type || 'branch' }}
       build-datetime: ${{ needs.build-details.outputs.build-datetime }}
@@ -77,8 +76,7 @@ jobs:
       id-token: write
       packages: read
       pull-requests: read
-    secrets: inherit # zizmor: ignore[secrets-inherit]
-    uses: rapidsai/shared-workflows/.github/workflows/conda-python-build.yaml@main
+    uses: rapidsai/shared-workflows/.github/workflows/conda-python-build.yaml@10c48afab35c7a70c3c4b1fcccaab11356b7720f
     with:
       build_type: ${{ inputs.build_type || 'branch' }}
       build-datetime: ${{ needs.build-details.outputs.build-datetime }}
@@ -89,6 +87,7 @@ jobs:
       # Build a conda package for each CUDA x ARCH x minimum supported Python version
       matrix_filter: group_by({CUDA_VER, ARCH}) | map(min_by(.PY_VER | split(".") | map(tonumber)))
   docs-build-matrix:
+    if: ${{ inputs.build_type != 'release-candidate' && github.event.inputs.build_type != 'release-candidate' && !startsWith(github.ref_name, 'release-test-') && !startsWith(inputs.branch, 'release-test-') && !startsWith(inputs.branch, 'refs/heads/release-test-') }}
     permissions:
       contents: read
     uses: rapidsai/shared-workflows/.github/workflows/compute-matrix.yaml@main
@@ -96,7 +95,7 @@ jobs:
       build_type: ${{ inputs.build_type || 'branch' }}
       matrix_name: docs-build
   docs-build:
-    if: github.ref_type == 'branch'
+    if: ${{ (github.ref_type == 'branch') && inputs.build_type != 'release-candidate' && github.event.inputs.build_type != 'release-candidate' && !startsWith(github.ref_name, 'release-test-') && !startsWith(inputs.branch, 'release-test-') && !startsWith(inputs.branch, 'refs/heads/release-test-') }}
     needs: [docs-build-matrix, python-build]
     permissions:
       actions: read
@@ -119,7 +118,7 @@ jobs:
       script: "ci/build_docs.sh"
       sha: ${{ inputs.sha }}
   publish-api-docs:
-    if: github.ref_type == 'branch'
+    if: ${{ (github.ref_type == 'branch') && inputs.build_type != 'release-candidate' && github.event.inputs.build_type != 'release-candidate' && !startsWith(github.ref_name, 'release-test-') && !startsWith(inputs.branch, 'release-test-') && !startsWith(inputs.branch, 'refs/heads/release-test-') }}
     needs: [docs-build]
     permissions:
       contents: read
@@ -140,6 +139,7 @@ jobs:
       docs-projects: nvforest
       dry-run: false
   upload-conda:
+    if: ${{ inputs.build_type != 'release-candidate' && github.event.inputs.build_type != 'release-candidate' && !startsWith(github.ref_name, 'release-test-') && !startsWith(inputs.branch, 'release-test-') && !startsWith(inputs.branch, 'refs/heads/release-test-') }}
     needs: [cpp-build, python-build]
     permissions:
       actions: read
@@ -164,8 +164,7 @@ jobs:
       id-token: write
       packages: read
       pull-requests: read
-    secrets: inherit # zizmor: ignore[secrets-inherit]
-    uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@main
+    uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@10c48afab35c7a70c3c4b1fcccaab11356b7720f
     with:
       build_type: ${{ inputs.build_type || 'branch' }}
       build-datetime: ${{ needs.build-details.outputs.build-datetime }}
@@ -179,6 +178,7 @@ jobs:
       package-name: libnvforest
       package-type: cpp
   wheel-publish-libnvforest:
+    if: ${{ inputs.build_type != 'release-candidate' && github.event.inputs.build_type != 'release-candidate' && !startsWith(github.ref_name, 'release-test-') && !startsWith(inputs.branch, 'release-test-') && !startsWith(inputs.branch, 'refs/heads/release-test-') }}
     needs: wheel-build-libnvforest
     permissions:
       actions: read
@@ -206,8 +206,7 @@ jobs:
       id-token: write
       packages: read
       pull-requests: read
-    secrets: inherit # zizmor: ignore[secrets-inherit]
-    uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@main
+    uses: rapidsai/shared-workflows/.github/workflows/wheels-build.yaml@10c48afab35c7a70c3c4b1fcccaab11356b7720f
     with:
       build_type: ${{ inputs.build_type || 'branch' }}
       build-datetime: ${{ needs.build-details.outputs.build-datetime }}
@@ -221,6 +220,7 @@ jobs:
       # Build a wheel for each CUDA x ARCH x minimum supported Python version
       matrix_filter: group_by({CUDA_VER, ARCH}) | map(min_by(.PY_VER | split(".") | map(tonumber)))
   wheel-publish-nvforest:
+    if: ${{ inputs.build_type != 'release-candidate' && github.event.inputs.build_type != 'release-candidate' && !startsWith(github.ref_name, 'release-test-') && !startsWith(inputs.branch, 'release-test-') && !startsWith(inputs.branch, 'refs/heads/release-test-') }}
     needs: wheel-build-nvforest
     permissions:
       actions: read
@@ -241,6 +241,7 @@ jobs:
       package-type: python
       publish-wheel-search-key: nvforest_wheel_python_nvforest
   devcontainers:
+    if: ${{ inputs.build_type != 'release-candidate' && github.event.inputs.build_type != 'release-candidate' && !startsWith(github.ref_name, 'release-test-') && !startsWith(inputs.branch, 'release-test-') && !startsWith(inputs.branch, 'refs/heads/release-test-') }}
     name: Build devcontainers
     secrets: inherit  # zizmor: ignore[secrets-inherit]
     uses: rapidsai/shared-workflows/.github/workflows/build-devcontainers.yaml@main
